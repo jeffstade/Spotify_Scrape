@@ -1,8 +1,16 @@
+
 import spotipy
 sp = spotipy.Spotify()
 from threading import Thread
+import csv
+import sys
+csv.field_size_limit(sys.maxsize)
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 #San Fermin: spotify:artist:7fSnislKgW9Mz0YIqWQmGt
 #Ed Sheerhan: spotify:artist:6eUKZXaKkcviH0Ku9w2n3V
+
 
 seed_artist_uris = {'spotify:artist:6eUKZXaKkcviH0Ku9w2n3V': False}
 total_seen = 0
@@ -76,9 +84,31 @@ def collect_keys_false(dictionary):
 	    	new_list.append(k)
 	return new_list
 
-threaded_data_request(1, collect_keys_false(seed_artist_uris)[:50])
+threaded_data_request(1, collect_keys_false(seed_artist_uris)[:20])
 
 '''
+import csv
+import io
+#f = io.open('artists.csv', 'wb', encoding='utf8')
+with io.open('artists.csv', 'w', encoding='utf-8') as csv_file:
+    writer = csv.writer(csv_file)
+    for k, v in artists.items():
+       writer.writerow([v['uri'],v['name'],v['popularity']])
+
+
+def create_csv_from_dict(filename, dict_obj, key_list, headers=False):
+	f = open(filename, 'wb')
+	wr = csv.writer(f, quoting=csv.QUOTE_ALL)
+	if (headers):
+		wr.writerow([h for h in headers])
+	else:
+		wr.writerow([k for k in key_list])
+	for d in dict_obj:
+		wr.writerow([dict_obj[d][k] for k in key_list])
+	f.close()
+
+create_csv_from_dict('artists.csv', artists, ['popularity', 'name'])
+
 class SpotifyScrape(threading.Thread):
     def __init__(self, threadID, name, counter, example_dictionary):
         threading.Thread.__init__(self)
