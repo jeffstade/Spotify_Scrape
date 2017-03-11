@@ -1,18 +1,84 @@
 import spotipy
 sp = spotipy.Spotify()
-import threading
-exitFlag = 0
-import timeit
+from threading import Thread
+#San Fermin: spotify:artist:7fSnislKgW9Mz0YIqWQmGt
+#Ed Sheerhan: spotify:artist:6eUKZXaKkcviH0Ku9w2n3V
 
-seed_artist_uris = {'spotify:artist:7fSnislKgW9Mz0YIqWQmGt':False}
+seed_artist_uris = {'spotify:artist:6eUKZXaKkcviH0Ku9w2n3V': False}
 total_seen = 0
+artist_table = {}
+global_popularity = []
 
-example_dictionary = {}
-for i in range(1,1000):
-	example_dictionary[i] = i+1
 
-currentPosition = 0
+artists = {}
+genres  = {}
+artist_related = {}
+artist_genre   = {}
 
+popularity_minimum = 10
+
+def process_id(id):
+	seed_artist_uris[id] = True
+	data = sp.artist_related_artists(id)
+	related_artists_count = len(data['artists'])
+	for related_artist in data['artists']:
+		related_artist_i = 1
+		name = related_artist['name']
+		uri = related_artist['uri']
+		popularity = related_artist['popularity']
+		global_popularity.append(popularity)
+		# Check against popularity minimum
+		if popularity >= popularity_minimum:
+			if uri not in artists:
+				# Populate Artists Table
+				ad = sp.artist(uri)
+				genres_count = len(ad['genres'])
+				artists[uri] = {'uri': uri, 'name': ad['name'], 'popularity': ad['popularity'], 'image_url': ad['images'][0]['url'], 'followers': ad['followers']['total'], 'type': ad['type'], 'genre_count': genres_count, 'related_artists_count': related_artists_count }
+				# Populate Genres table
+				genre_i = 1
+				for g in ad['genres']:
+					if g not in genres:
+						genres[g] = genre_i
+						genre_i += 1
+					# Populate Genres<>Artists table
+					artist_genre[uri + '_' + g] = {'uri': uri, 'genre_id': genres[g], 'genre_order': genre_i}
+					genre_i += 1
+		# Populat Artists<>Artists table
+		artist_related[id + uri] = {'uri': id, 'related_uri': uri, 'related_order': related_artist_i}
+		if(uri) not in seed_artist_uris:
+			seed_artist_uris[uri] = False
+		related_artist_i += 1
+
+def process_id_range(id_range, store=None):
+    if store is None:
+        store = {}
+    for id in id_range:
+        store[id] = process_id(id)
+    return store
+
+def threaded_data_request(nthreads, id_range):
+    store = {}
+    threads = []
+    for i in range(nthreads):
+        ids = id_range[i::nthreads]
+        t = Thread(target=process_id_range, args=(ids,store))
+        threads.append(t)    
+    # start the threads
+    [ t.start() for t in threads ]
+    # wait for the threads to finish
+    [ t.join() for t in threads ]
+    return store
+
+def collect_keys_false(dictionary):
+	new_list = []
+	for k, v in dictionary.iteritems():
+	    if v == False:
+	    	new_list.append(k)
+	return new_list
+
+threaded_data_request(1, collect_keys_false(seed_artist_uris)[:50])
+
+'''
 class SpotifyScrape(threading.Thread):
     def __init__(self, threadID, name, counter, example_dictionary):
         threading.Thread.__init__(self)
@@ -65,7 +131,6 @@ timeit.timeit(runthreads, number=100)
 #iterate_on_dictionary(seed_artist_uris)
 #print(len(seed_artist_uris), total_seen)
 
-'''
 data = sp.artist_related_artists('spotify:artist:7fSnislKgW9Mz0YIqWQmGt') #SAN FERMIN
 sp.artist_related_artists('spotify:artist:7fSnislKgW9Mz0YIqWQmGt')
 '''
